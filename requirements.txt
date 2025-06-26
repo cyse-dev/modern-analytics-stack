@@ -1,0 +1,10 @@
+google-cloud-bigquery==3.13.0
+google-cloud-storage==2.10.0
+polars==0.20.2
+dbt-bigquery==1.6.6
+dagster==1.5.13
+dagster-webserver==1.5.13
+dagster-postgres==0.21.13
+dagster-gcp==0.21.13
+dagster-dbt==0.21.13
+python-dotenv==1.0.0

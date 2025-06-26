@@ -1,0 +1,42 @@
+# Environment files
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Dagster
+dagster_home/
+.dagster/
+*.db
+*.pid
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Credentials
+service-account-key.json
+*.json
+!dbt/packages.yml
+
+# Data files (except samples)
+data/*.csv
+!data/sample_user_events.csv
+
+.claude

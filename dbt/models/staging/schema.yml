@@ -1,0 +1,73 @@
+version: 2
+
+sources:
+  - name: heymax_data
+    description: Raw data tables loaded by Dagster
+    tables:
+      - name: raw_user_events
+        description: Raw user events data from CSV files
+        meta:
+          dagster:
+            asset_key: ['raw_user_events']
+        columns:
+          - name: event_time
+            description: Timestamp when the event occurred
+            tests:
+              - not_null
+          - name: user_id
+            description: Unique identifier for the user
+            tests:
+              - not_null
+          - name: event_type
+            description: Type of event (miles_earned, miles_redeemed, share)
+            tests:
+              - not_null
+              - accepted_values:
+                  values: ['miles_earned', 'miles_redeemed', 'share']
+          - name: transaction_category
+            description: Category of the transaction
+          - name: miles_amount
+            description: Number of miles involved in the transaction
+          - name: platform
+            description: Platform where the event occurred
+            tests:
+              - not_null
+          - name: utm_source
+            description: UTM source for attribution
+          - name: country
+            description: Country where the event occurred
+
+models:
+  - name: stg_raw_user_events
+    description: Staging model for raw user events with basic transformations
+    config:
+      tags: ["dagster"]
+    columns:
+      - name: user_id
+        description: Unique identifier for the user
+        tests:
+          - not_null
+      - name: event_type
+        description: Type of event
+        tests:
+          - not_null
+      - name: event_time
+        description: Timestamp when the event occurred
+        tests:
+          - not_null
+      - name: event_date
+        description: Date when the event occurred
+        tests:
+          - not_null
+      - name: transaction_category
+        description: Category of the transaction
+      - name: miles_amount
+        description: Number of miles involved in the transaction
+      - name: platform
+        description: Platform where the event occurred
+        tests:
+          - not_null
+      - name: utm_source
+        description: UTM source for attribution
+      - name: country
+        description: Country where the event occurred

@@ -1,0 +1,87 @@
+
+# Docker Secrets for secure credential management
+secrets:
+  gcp_service_account_key:
+    file: ./service-account-key.json
+
+services:
+  # PostgreSQL database for Dagster storage
+  dagster_postgres:
+    image: postgres:15
+    container_name: heymax_dagster_postgres
+    environment:
+      POSTGRES_USER: dagster_user
+      POSTGRES_PASSWORD: dagster_password
+      POSTGRES_DB: dagster_storage
+    volumes:
+      - dagster_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - heymax_network
+
+  # Dagster webserver (UI)
+  dagster_webserver:
+    build: .
+    container_name: heymax_dagster_webserver
+    command: >
+      sh -c "
+        dagster-webserver --host 0.0.0.0 --port 3000 --path-prefix ''
+      "
+    environment:
+      DAGSTER_POSTGRES_USER: dagster_user
+      DAGSTER_POSTGRES_PASSWORD: dagster_password
+      DAGSTER_POSTGRES_HOST: dagster_postgres
+      DAGSTER_POSTGRES_DB: dagster_storage
+      DAGSTER_CURRENT_IMAGE: heymax_dagster
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp_service_account_key
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+      BIGQUERY_DATASET: ${BIGQUERY_DATASET:-heymax_data}
+      GCS_BUCKET: ${GCS_BUCKET}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./dagster_home:/opt/dagster/app/dagster_home
+      - ./data:/opt/dagster/app/data
+      - ./dbt:/opt/dagster/app/dbt
+      - ./dagster_project:/opt/dagster/app/dagster_project
+    secrets:
+      - gcp_service_account_key
+    depends_on:
+      - dagster_postgres
+    networks:
+      - heymax_network
+
+  # Dagster daemon (scheduler)
+  dagster_daemon:
+    build: .
+    container_name: heymax_dagster_daemon
+    command: dagster-daemon run
+    environment:
+      DAGSTER_POSTGRES_USER: dagster_user
+      DAGSTER_POSTGRES_PASSWORD: dagster_password
+      DAGSTER_POSTGRES_HOST: dagster_postgres
+      DAGSTER_POSTGRES_DB: dagster_storage
+      DAGSTER_CURRENT_IMAGE: heymax_dagster
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp_service_account_key
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+      BIGQUERY_DATASET: ${BIGQUERY_DATASET:-heymax_data}
+      GCS_BUCKET: ${GCS_BUCKET}
+    volumes:
+      - ./dagster_home:/opt/dagster/app/dagster_home
+      - ./data:/opt/dagster/app/data
+      - ./dbt:/opt/dagster/app/dbt
+      - ./dagster_project:/opt/dagster/app/dagster_project
+    secrets:
+      - gcp_service_account_key
+    depends_on:
+      - dagster_postgres
+    networks:
+      - heymax_network
+
+volumes:
+  dagster_postgres_data:
+
+networks:
+  heymax_network:
+    driver: bridge

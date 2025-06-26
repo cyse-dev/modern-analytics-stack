@@ -1,0 +1,911 @@
+version: 2
+
+models:
+  - name: fct_events
+    description: "Fact table containing all user events with session tracking and event sequencing"
+    config:
+      tags: ["dagster"]
+    columns:
+      - name: event_id
+        description: "Unique identifier for each event (surrogate key)"
+        tests:
+          - not_null
+          - unique
+      - name: user_id
+        description: "Unique identifier for the user"
+        tests:
+          - not_null
+      - name: event_type
+        description: "Type of event (miles_earned, miles_redeemed, share, like, reward_search)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['miles_earned', 'miles_redeemed', 'share', 'like', 'reward_search']
+      - name: event_time
+        description: "Timestamp when the event occurred"
+        tests:
+          - not_null
+      - name: event_date
+        description: "Date when the event occurred"
+        tests:
+          - not_null
+      - name: transaction_category
+        description: "Category of the transaction"
+      - name: miles_amount
+        description: "Number of miles involved in the transaction"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: platform
+        description: "Platform where the event occurred"
+        tests:
+          - not_null
+      - name: utm_source
+        description: "UTM source for attribution"
+      - name: country
+        description: "Country where the event occurred"
+      - name: session_id
+        description: "Derived session identifier based on 30-minute inactivity gaps"
+        tests:
+          - not_null
+      - name: is_session_start
+        description: "Boolean flag indicating if this event starts a new session"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0,1]
+              quote: false
+      - name: event_sequence_in_session
+        description: "Sequence number of this event within its session"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              inclusive: true
+      - name: processed_at
+        description: "Timestamp when this record was processed"
+        tests:
+          - not_null
+
+  - name: dim_users
+    description: "Dimension table containing user attributes and summary metrics"
+    config:
+      tags: ["dagster"]
+    columns:
+      - name: user_id
+        description: "Unique identifier for the user"
+        tests:
+          - not_null
+          - unique
+      - name: first_seen_at
+        description: "Timestamp of user's first event"
+        tests:
+          - not_null
+      - name: first_seen_date
+        description: "Date of user's first event"
+        tests:
+          - not_null
+      - name: last_seen_at
+        description: "Timestamp of user's most recent event"
+        tests:
+          - not_null
+      - name: last_seen_date
+        description: "Date of user's most recent event"
+        tests:
+          - not_null
+      - name: days_active
+        description: "Number of days between first and last activity"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: first_platform
+        description: "Platform where user first engaged"
+      - name: first_utm_source
+        description: "UTM source for user acquisition"
+      - name: first_country
+        description: "Country where user first engaged"
+      - name: total_miles_earned
+        description: "Total miles earned by this user"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: total_miles_redeemed
+        description: "Total miles redeemed by this user"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: current_miles_balance
+        description: "Current miles balance (earned - redeemed)"
+      - name: has_negative_balance
+        description: "Boolean flag indicating if user has negative miles balance"
+        tests:
+          - not_null
+      - name: miles_earned_transactions
+        description: "Number of miles earning transactions"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: miles_redeemed_transactions
+        description: "Number of miles redeeming transactions"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: share_events
+        description: "Number of share events by this user"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: like_events
+        description: "Number of like events by this user"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: reward_search_events
+        description: "Number of reward search events by this user"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: updated_at
+        description: "Timestamp when this record was last updated"
+        tests:
+          - not_null
+
+  - name: miles_analytics
+    description: "Daily analytics for miles earning and redemption patterns"
+    config:
+      tags: ["dagster"]
+    columns:
+      - name: event_date
+        description: "Date for which metrics are calculated"
+        tests:
+          - not_null
+          - unique
+      - name: daily_miles_earned
+        description: "Total miles earned on this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: daily_miles_redeemed
+        description: "Total miles redeemed on this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: net_miles_change
+        description: "Net change in miles (earned - redeemed)"
+      - name: users_earning
+        description: "Number of users who earned miles on this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: users_redeeming
+        description: "Number of users who redeemed miles on this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: earning_transactions
+        description: "Number of miles earning transactions on this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: redeeming_transactions
+        description: "Number of miles redeeming transactions on this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: cumulative_miles_earned
+        description: "Running total of all miles earned up to this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: cumulative_miles_redeemed
+        description: "Running total of all miles redeemed up to this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: avg_7d_miles_earned
+        description: "7-day moving average of daily miles earned"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: avg_7d_miles_redeemed
+        description: "7-day moving average of daily miles redeemed"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: calculated_at
+        description: "Timestamp when these metrics were calculated"
+        tests:
+          - not_null
+
+  - name: growth_metrics
+    description: "Enhanced daily user growth and engagement metrics with Social Capital framework"
+    config:
+      tags: ["dagster"]
+    columns:
+      - name: event_date
+        description: "Date for which metrics are calculated"
+        tests:
+          - not_null
+          - unique
+      - name: daily_active_users
+        description: "Number of unique users active on this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: new_users
+        description: "Number of new users acquired on this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: retained_users
+        description: "Number of users who were active on consecutive days"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: resurrected_users
+        description: "Number of users who returned after being inactive"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: churned_users
+        description: "Number of users who became inactive on this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: daily_quick_ratio
+        description: "Daily Social Capital Quick Ratio: (new + resurrected) / churned"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: day_over_day_retention_pct
+        description: "Day-over-day retention rate as percentage"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: weekly_active_users_7d
+        description: "7-day rolling weekly active users"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: active_users_28d
+        description: "28-day rolling active users (Social Capital recommended)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: monthly_active_users_30d
+        description: "30-day rolling monthly active users"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: dau_wau_stickiness
+        description: "DAU/WAU stickiness ratio (percentage)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: dau_mau_stickiness
+        description: "DAU/MAU stickiness ratio (percentage)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: wau_mau_stickiness
+        description: "WAU/MAU stickiness ratio (percentage)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: daily_growth_quality
+        description: "Daily growth quality classification based on quick ratio"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Unknown', 'Declining', 'Healthy', 'Strong']
+      - name: activity_trend_7d
+        description: "7-day activity trend classification"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Trending Up', 'Trending Down', 'Stable']
+      - name: calculated_at
+        description: "Timestamp when these metrics were calculated"
+        tests:
+          - not_null
+
+  - name: retention_cohorts
+    description: "Monthly cohort retention analysis"
+    config:
+      tags: ["dagster"]
+    columns:
+      - name: cohort_month
+        description: "Month when the cohort first engaged"
+        tests:
+          - not_null
+      - name: period_number
+        description: "Number of months after cohort month (0 = same month)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: users_active
+        description: "Number of users from this cohort active in this period"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: cohort_size
+        description: "Total size of the cohort"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              inclusive: true
+      - name: retention_rate
+        description: "Percentage of cohort still active in this period"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: period_month
+        description: "Actual calendar month for this period"
+        tests:
+          - not_null
+    tests:
+      - unique:
+          column_name: "concat(cohort_month, '_', period_number)"
+
+  - name: users_with_negative_miles
+    description: "Data quality table highlighting users with negative miles balance"
+    config:
+      tags: ["dagster"]
+    columns:
+      - name: user_id
+        description: "Unique identifier for the user with negative balance"
+        tests:
+          - not_null
+          - unique
+      - name: current_miles_balance
+        description: "Negative miles balance amount"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              max_value: -1
+              inclusive: true
+      - name: negative_amount
+        description: "Absolute value of negative balance"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              inclusive: true
+      - name: flagged_at
+        description: "Timestamp when this record was flagged"
+        tests:
+          - not_null
+
+  - name: social_capital_growth_accounting
+    description: "Social Capital framework for MAU growth accounting: MAU(t) = new(t) + retained(t) + resurrected(t)"
+    config:
+      tags: ["dagster"]
+    columns:
+      - name: activity_month
+        description: "Month for which metrics are calculated"
+        tests:
+          - not_null
+          - unique
+      - name: total_mau
+        description: "Total Monthly Active Users"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: new_users
+        description: "New users active for the first time"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: retained_users
+        description: "Users active in current month who were also active last month"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: resurrected_users
+        description: "Users active in current month who were inactive last month but active before"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: churned_users
+        description: "Users who were active last month but not this month"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: retention_rate_pct
+        description: "Month-over-month retention rate as percentage"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: quick_ratio
+        description: "Social Capital Quick Ratio: (new + resurrected) / churned"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: growth_quality_category
+        description: "Growth quality classification based on quick ratio"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Unknown', 'Declining', 'Typical Consumer', 'Good Consumer', 'Excellent Consumer']
+      - name: verification_total
+        description: "Verification that new + retained + resurrected equals total_mau"
+        tests:
+          - not_null
+
+  - name: quick_ratio_analysis
+    description: "Quick ratio tracking, alerts, and growth quality analysis with strategic recommendations"
+    config:
+      tags: ["dagster"]
+    columns:
+      - name: activity_month
+        description: "Month for which metrics are calculated"
+        tests:
+          - not_null
+          - unique
+      - name: quick_ratio
+        description: "Social Capital Quick Ratio: (new + resurrected) / churned"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: quick_ratio_3mo_avg
+        description: "3-month moving average of quick ratio for trend analysis"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: alert_level
+        description: "Alert level based on quick ratio and growth quality"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['OK', 'WARNING: Quick Ratio Dropped Below 1.2', 'WARNING: Quick Ratio Declined >0.3 Points', 'WARNING: Churn Significantly Exceeding Growth', 'CRITICAL: Quick Ratio Below 1.0']
+      - name: growth_quality_score
+        description: "Growth quality score from 0-100 based on quick ratio"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: retention_benchmark
+        description: "Retention rate benchmark classification"
+        tests:
+          - accepted_values:
+              values: ['Excellent (80%+)', 'Good (60-80%)', 'Average (40-60%)', 'Below Average (20-40%)', 'Poor (<20%)']
+      - name: quick_ratio_benchmark
+        description: "Quick ratio benchmark classification"
+        tests:
+          - accepted_values:
+              values: ['Top Tier (2.0+)', 'Strong (1.5-2.0)', 'Healthy (1.0-1.5)', 'Concerning (0.8-1.0)', 'Critical (<0.8)']
+      - name: business_stage
+        description: "Business stage classification based on months since start"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Early Stage', 'Growth Stage', 'Mature Stage']
+      - name: strategic_recommendation
+        description: "Strategic recommendation based on growth metrics"
+        tests:
+          - not_null
+
+  - name: retention_quality_framework
+    description: "Deep retention analysis with stability tracking, cohort patterns, and quality scoring"
+    config:
+      tags: ["dagster"]
+    columns:
+      - name: event_date
+        description: "Date for which metrics are calculated"
+        tests:
+          - not_null
+          - unique
+      - name: daily_active_users
+        description: "Number of unique users active on this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: new_stage_users
+        description: "Users in their first 7 days (New stage)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: growing_stage_users
+        description: "Users in days 8-30 (Growing stage)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: established_stage_users
+        description: "Users in days 31-90 (Established stage)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: mature_stage_users
+        description: "Users with 90+ days (Mature stage)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: users_consecutive_today
+        description: "Users who were active on consecutive days"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: consecutive_today_pct
+        description: "Percentage of users active on consecutive days"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: daily_retention_health_score
+        description: "Overall retention health score (0-100) based on return patterns"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: retention_quality_category
+        description: "Retention quality classification based on consecutive day users"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Excellent', 'Good', 'Average', 'Below Average', 'Poor']
+      - name: engagement_trend
+        description: "Engagement trend based on average streak length"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['High Engagement', 'Moderate Engagement', 'Low Engagement']
+
+  - name: user_resurrection_analysis
+    description: "Analysis of dormant users and successful resurrection patterns"
+    config:
+      tags: ["dagster"]
+    columns:
+      - name: event_date
+        description: "Date for which metrics are calculated"
+        tests:
+          - not_null
+          - unique
+      - name: total_resurrections
+        description: "Total number of user resurrections on this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: resurrection_pct_of_dau
+        description: "Resurrections as percentage of daily active users"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: resurrection_effectiveness_score
+        description: "Weighted effectiveness score for resurrection success"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: resurrection_quality_category
+        description: "Quality classification of resurrection performance"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Excellent', 'Good', 'Average', 'Below Average', 'Poor']
+      - name: resurrection_pattern
+        description: "Pattern classification of resurrection types"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['No Resurrections', 'Quick Return Focus', 'Long-term Recovery', 'Balanced Recovery']
+
+  - name: growth_drivers
+    description: "Daily business-specific growth drivers analyzing miles economy, social engagement, and platform metrics"
+    config:
+      tags: ["dagster"]
+    columns:
+      - name: event_date
+        description: "Date for which metrics are calculated"
+        tests:
+          - not_null
+          - unique
+      - name: daily_active_users
+        description: "Number of unique users active on this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: total_daily_events
+        description: "Total number of events on this date"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: daily_miles_earned
+        description: "Total miles earned on this date"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: daily_miles_redeemed
+        description: "Total miles redeemed on this date"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: net_miles_change
+        description: "Net change in miles (earned - redeemed)"
+      - name: users_earning_miles
+        description: "Number of users who earned miles"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: users_redeeming_miles
+        description: "Number of users who redeemed miles"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: miles_earn_redeem_ratio
+        description: "Ratio of miles earned to miles redeemed"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: earning_user_pct
+        description: "Percentage of daily active users who earned miles"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: redeeming_user_pct
+        description: "Percentage of daily active users who redeemed miles"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: daily_shares
+        description: "Number of share events"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: daily_likes
+        description: "Number of like events"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: daily_searches
+        description: "Number of search events"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: sharing_user_pct
+        description: "Percentage of users who shared content"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: liking_user_pct
+        description: "Percentage of users who liked content"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: searching_user_pct
+        description: "Percentage of users who searched"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: ios_users
+        description: "Number of iOS users"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: android_users
+        description: "Number of Android users"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: web_users
+        description: "Number of Web users"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: ios_user_pct
+        description: "Percentage of users on iOS"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: android_user_pct
+        description: "Percentage of users on Android"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: web_user_pct
+        description: "Percentage of users on Web"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: new_organic_users
+        description: "New users acquired through organic channels"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: new_paid_users
+        description: "New users acquired through paid channels"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: new_social_users
+        description: "New users acquired through social channels"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: new_referral_users
+        description: "New users acquired through referrals"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: total_new_users
+        description: "Total new users across all channels"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: miles_economy_health
+        description: "Health status of the miles economy"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Healthy Growth', 'Stable', 'High Redemption', 'Balanced']
+      - name: social_engagement_level
+        description: "Level of social engagement"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['High Social', 'Moderate Social', 'Low Social']
+      - name: feature_adoption_score
+        description: "Overall feature adoption score (0-100)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      - name: avg_7d_miles_earned
+        description: "7-day moving average of miles earned"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: avg_7d_social_actions
+        description: "7-day moving average of social actions (shares + likes)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: calculated_at
+        description: "Timestamp when the record was calculated"
+        tests:
+          - not_null

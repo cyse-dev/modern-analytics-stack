@@ -1,0 +1,14 @@
+[0m19:12:04.585197 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107d73d90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10757db90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107b0b4d0>]}
+
+
+============================== 19:12:04.587870 | 4c848f2c-e043-4a9d-9e64-7cd4a4031e92 ==============================
+[0m19:12:04.587870 [info ] [MainThread]: Running with dbt=1.6.18
+[0m19:12:04.588207 [debug] [MainThread]: running dbt with arguments {'printer_width': '80', 'indirect_selection': 'eager', 'log_cache_events': 'False', 'write_json': 'True', 'partial_parse': 'True', 'cache_selected_only': 'False', 'warn_error': 'None', 'fail_fast': 'False', 'version_check': 'True', 'log_path': 'logs', 'profiles_dir': '/Users/edwin.chiang/.dbt', 'debug': 'False', 'use_colors': 'True', 'use_experimental_parser': 'False', 'no_print': 'None', 'quiet': 'False', 'warn_error_options': 'WarnErrorOptions(include=[], exclude=[])', 'invocation_command': 'dbt ', 'introspect': 'True', 'log_format': 'default', 'target_path': 'None', 'static_parser': 'True', 'send_anonymous_usage_stats': 'True'}
+[0m19:12:04.588529 [error] [MainThread]: Encountered an error:
+Runtime Error
+  No dbt_project.yml found at expected path /Users/edwin.chiang/Documents/HEYMAX_TEST/heymax-analytics-stack/dbt_project.yml
+  Verify that each entry within packages.yml (and their transitive dependencies) contains a file named dbt_project.yml
+  
+[0m19:12:04.588918 [debug] [MainThread]: Command `-c ls` failed at 19:12:04.588829 after 0.02 seconds
+[0m19:12:04.589129 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10757d9d0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x103049090>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1080efd90>]}
+[0m19:12:04.589318 [debug] [MainThread]: Flushing usage events

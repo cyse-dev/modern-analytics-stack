@@ -1,0 +1,11 @@
+
+    
+    
+
+
+
+select resurrection_quality_category
+from `heymax-interview`.`heymax_data`.`user_resurrection_analysis`
+where resurrection_quality_category is null
+
+
