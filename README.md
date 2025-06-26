@@ -73,13 +73,8 @@ modern-analytics-stack/
 ├── logs/                             # Application logs
 │   └── dbt.log
 │
-├── superset/                         # Apache Superset BI Platform
-│   ├── README.md
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   └── [Complete Superset installation]
 │
-├── docker-compose.yml                # Multi-service setup
+├── docker-compose.yml                # Dagster services setup
 ├── Dockerfile                        # Container definition
 ├── Makefile                          # Development commands
 ├── dagster.yaml                      # Dagster configuration
@@ -143,31 +138,71 @@ docker-compose up -d dagster_webserver dagster_daemon postgres
 docker-compose ps
 ```
 
-### 3. Launch Apache Superset (Separate Container)
-```bash
-# Navigate to Superset directory and start BI platform
-cd superset/
-docker-compose build
-docker-compose up -d
-
-# Verify Superset is running
-docker-compose ps
-cd ..
-```
-
-### 4. Access Interfaces
+### 3. Access Dagster Interface
 - **Dagster UI**: http://localhost:3000 - Data pipeline orchestration and monitoring
-- **Apache Superset**: http://localhost:8088 - Business intelligence dashboards (admin/admin)
 
-### 5. Verify Setup
+### 4. Verify Setup
 ```bash
-# Check all containers are running
-docker ps | grep -E "(dagster|superset)"
+# Check Dagster containers are running
+docker-compose ps
 
 # View logs if needed
-docker-compose logs -f dagster_webserver  # Dagster logs
-cd superset && docker-compose logs -f superset_app  # Superset logs
+docker-compose logs -f dagster_webserver
+docker-compose logs -f dagster_daemon
 ```
+
+## 📊 Apache Superset Installation (Optional BI Platform)
+
+Apache Superset is not included in this repository but can be installed separately for business intelligence dashboards.
+
+### Option 1: Docker Installation (Recommended)
+```bash
+# Clone Apache Superset repository
+git clone https://github.com/apache/superset.git
+cd superset
+
+# Enter the repository you just cloned
+$ cd superset
+
+# Set the repo to the state associated with the latest official version
+$ git checkout tags/5.0.0
+
+# Fire up Superset using Docker Compose
+$ docker compose -f docker-compose-image-tag.yml up
+
+# Access Superset at http://localhost:8088
+# Default credentials: admin/admin
+```
+
+### Option 2: Local Installation
+```bash
+# Install Superset via pip
+pip install apache-superset
+
+# Initialize database
+superset db upgrade
+
+# Create admin user
+export FLASK_APP=superset
+superset fab create-admin
+
+# Initialize Superset
+superset init
+
+# Start Superset
+superset run -p 8088 --with-threads --reload --debugger
+```
+
+### Connecting Superset to BigQuery
+Once Superset is installed:
+
+**Add BigQuery Database Connection**:
+   - Go to Settings → Database Connections
+   - Add new database with BigQuery connection string:
+   ```
+   bigquery://your-project-id/your-dataset-id?credentials_path=/path/to/service-account-key.json
+   ```
+
 
 ## 🔄 Daily Pipeline Operations
 
@@ -181,7 +216,6 @@ The analytics pipeline processes data through:
 
 ## 🛠️ Development Commands
 
-### Dagster Pipeline Commands
 ```bash
 # Start/stop Dagster services
 docker-compose up -d dagster_webserver dagster_daemon postgres
@@ -198,36 +232,12 @@ dbt test
 # View Dagster logs
 docker-compose logs -f dagster_webserver
 docker-compose logs -f dagster_daemon
-```
-
-### Superset BI Commands
-```bash
-# Start/stop Superset (from superset/ directory)
-cd superset/
-docker-compose up -d
-docker-compose stop
-
-# Access Superset container shell
-docker-compose exec superset_app bash
-
-# View Superset logs
-docker-compose logs -f superset_app
-cd ..
-```
-
-### Combined Operations
-```bash
-# Start both services
-docker-compose up -d dagster_webserver dagster_daemon postgres
-cd superset && docker-compose up -d && cd ..
-
-# Stop both services
-docker-compose stop dagster_webserver dagster_daemon postgres
-cd superset && docker-compose stop && cd ..
 
 # Full cleanup
 docker-compose down
-cd superset && docker-compose down && cd ..
+
+# Rebuild containers after changes
+docker-compose up -d --build dagster_webserver dagster_daemon postgres
 ```
 
 ## 📊 Key Analytics Features
@@ -251,50 +261,31 @@ cd superset && docker-compose down && cd ..
 
 ### Common Issues
 
-**Dagster Container Issues**
+**Container Issues**
 ```bash
-# Check Dagster container status
+# Check container status
 docker-compose ps
 
-# View Dagster service logs
+# View service logs
 docker-compose logs dagster_webserver
 docker-compose logs dagster_daemon
+docker-compose logs postgres
 
-# Restart Dagster services
+# Restart services
 docker-compose restart dagster_webserver dagster_daemon
 
-# Full Dagster environment reset
+# Full environment reset
 docker-compose down
 docker-compose up -d --build dagster_webserver dagster_daemon postgres
 ```
 
-**Superset Container Issues**
-```bash
-# Check Superset container status (from superset/ directory)
-cd superset/
-docker-compose ps
-
-# View Superset service logs
-docker-compose logs superset_app
-
-# Restart Superset services
-docker-compose restart
-
-# Full Superset environment reset
-docker-compose down
-docker-compose up -d --build
-cd ..
-```
-
 **Port Conflicts**
 ```bash
-# Check if ports are already in use
-lsof -i :3000  # Dagster port
-lsof -i :8088  # Superset port
+# Check if Dagster port is already in use
+lsof -i :3000
 
-# Kill processes using ports if needed
+# Kill process using port if needed
 sudo kill -9 $(lsof -t -i:3000)
-sudo kill -9 $(lsof -t -i:8088)
 ```
 
 ### dbt Model Issues

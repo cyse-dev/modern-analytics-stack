@@ -40,3 +40,5 @@ data/*.csv
 !data/sample_user_events.csv
 
 .claude
+
+superset
