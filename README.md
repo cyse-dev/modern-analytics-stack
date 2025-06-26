@@ -133,16 +133,41 @@ cd modern-analytics-stack
 # Ensure GCP credentials are properly configured in service-account-key.json, which should exist in your root directory.
 ```
 
-### 2. Launch Analytics Stack
+### 2. Launch Dagster Analytics Pipeline
 ```bash
-# Build and start all services
+# Build and start Dagster services (data pipeline and orchestration)
 docker-compose build
-docker-compose up -d
+docker-compose up -d dagster_webserver dagster_daemon postgres
+
+# Verify Dagster is running
+docker-compose ps
 ```
 
-### 3. Access Interfaces
-- **Dagster UI**: http://localhost:3000 - Pipeline orchestration
-- **Apache Superset**: http://localhost:8088 - BI dashboards (admin/admin)
+### 3. Launch Apache Superset (Separate Container)
+```bash
+# Navigate to Superset directory and start BI platform
+cd superset/
+docker-compose build
+docker-compose up -d
+
+# Verify Superset is running
+docker-compose ps
+cd ..
+```
+
+### 4. Access Interfaces
+- **Dagster UI**: http://localhost:3000 - Data pipeline orchestration and monitoring
+- **Apache Superset**: http://localhost:8088 - Business intelligence dashboards (admin/admin)
+
+### 5. Verify Setup
+```bash
+# Check all containers are running
+docker ps | grep -E "(dagster|superset)"
+
+# View logs if needed
+docker-compose logs -f dagster_webserver  # Dagster logs
+cd superset && docker-compose logs -f superset_app  # Superset logs
+```
 
 ## 🔄 Daily Pipeline Operations
 
@@ -156,21 +181,53 @@ The analytics pipeline processes data through:
 
 ## 🛠️ Development Commands
 
+### Dagster Pipeline Commands
 ```bash
-# Start development environment
-docker-compose up -d
+# Start/stop Dagster services
+docker-compose up -d dagster_webserver dagster_daemon postgres
+docker-compose stop dagster_webserver dagster_daemon postgres
 
-# Access container shell
+# Access Dagster container shell
 docker-compose exec dagster_webserver bash
 
-# Run dbt models
+# Run dbt models from within container
 cd /opt/dagster/app/dbt
 dbt run --models marts
 dbt test
 
-# View logs
+# View Dagster logs
 docker-compose logs -f dagster_webserver
 docker-compose logs -f dagster_daemon
+```
+
+### Superset BI Commands
+```bash
+# Start/stop Superset (from superset/ directory)
+cd superset/
+docker-compose up -d
+docker-compose stop
+
+# Access Superset container shell
+docker-compose exec superset_app bash
+
+# View Superset logs
+docker-compose logs -f superset_app
+cd ..
+```
+
+### Combined Operations
+```bash
+# Start both services
+docker-compose up -d dagster_webserver dagster_daemon postgres
+cd superset && docker-compose up -d && cd ..
+
+# Stop both services
+docker-compose stop dagster_webserver dagster_daemon postgres
+cd superset && docker-compose stop && cd ..
+
+# Full cleanup
+docker-compose down
+cd superset && docker-compose down && cd ..
 ```
 
 ## 📊 Key Analytics Features
@@ -193,20 +250,51 @@ docker-compose logs -f dagster_daemon
 ## 🚨 Troubleshooting
 
 ### Common Issues
+
+**Dagster Container Issues**
 ```bash
-# Check container status
+# Check Dagster container status
 docker-compose ps
 
-# View service logs
+# View Dagster service logs
 docker-compose logs dagster_webserver
 docker-compose logs dagster_daemon
 
-# Restart services
+# Restart Dagster services
+docker-compose restart dagster_webserver dagster_daemon
+
+# Full Dagster environment reset
+docker-compose down
+docker-compose up -d --build dagster_webserver dagster_daemon postgres
+```
+
+**Superset Container Issues**
+```bash
+# Check Superset container status (from superset/ directory)
+cd superset/
+docker-compose ps
+
+# View Superset service logs
+docker-compose logs superset_app
+
+# Restart Superset services
 docker-compose restart
 
-# Full environment reset
+# Full Superset environment reset
 docker-compose down
 docker-compose up -d --build
+cd ..
+```
+
+**Port Conflicts**
+```bash
+# Check if ports are already in use
+lsof -i :3000  # Dagster port
+lsof -i :8088  # Superset port
+
+# Kill processes using ports if needed
+sudo kill -9 $(lsof -t -i:3000)
+sudo kill -9 $(lsof -t -i:8088)
 ```
 
 ### dbt Model Issues
