@@ -136,7 +136,7 @@ modern-analytics-stack/
 ### 1. Environment Setup
 ```bash
 git clone <repository-url>
-cd heymax-analytics-stack
+cd modern-analytics-stack
 
 # Ensure GCP credentials are properly configured in service-account-key.json
 ```
