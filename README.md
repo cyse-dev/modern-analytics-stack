@@ -64,8 +64,6 @@ modern-analytics-stack/
 │           ├── user_resurrection_analysis.sql
 │           └── users_with_negative_miles.sql
 │
-├── data/                              # Sample/source data
-│   └── *.csv
 │
 ├── scripts/                           # Utility scripts
 │   ├── data_ingestion.py             # CSV to BigQuery
@@ -129,10 +127,10 @@ modern-analytics-stack/
 
 ### 1. Environment Setup
 ```bash
-git clone <repository-url>
+git clone github.com/cyse-dev/modern-analytics-stack.git
 cd modern-analytics-stack
 
-# Ensure GCP credentials are properly configured in service-account-key.json
+# Ensure GCP credentials are properly configured in service-account-key.json, which should exist in your root directory.
 ```
 
 ### 2. Launch Analytics Stack
