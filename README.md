@@ -71,12 +71,6 @@ modern-analytics-stack/
 │   ├── data_ingestion.py             # CSV to BigQuery
 │   └── setup.sh                      # Initial setup
 │
-├── dagster_home/                      # Dagster state and history
-│   ├── dagster.yaml
-│   ├── history/                      # Run history
-│   ├── logs/
-│   ├── schedules/
-│   └── storage/
 │
 ├── logs/                             # Application logs
 │   └── dbt.log
